@@ -1,46 +1,56 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 
-const browser = await puppeteer.launch({
-  headless: 'new',
-  args: ['--no-sandbox', '--disable-setuid-sandbox']
-  // DO NOT include executablePath
-});
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  const page = await browser.newPage();
+app.get('/scrape', async (req, res) => {
+  let browser;
 
   try {
-    // 1. Go to home page
-    await page.goto('https://www2.myfloridalicense.com', {
-      waitUntil: 'domcontentloaded',
+    // 1. Launch Puppeteer
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    // 2. Click top nav “Online Services”
+    const page = await browser.newPage();
+
+    // 2. Go to home page
+    await page.goto('https://www2.myfloridalicense.com', {
+      waitUntil: 'domcontentloaded'
+    });
+
+    // 3. Click "Online Services"
     await page.evaluate(() => {
       const link = Array.from(document.querySelectorAll('a')).find(a =>
         a.innerText.includes('ONLINE SERVICES')
       );
       if (link) link.click();
     });
+
     await page.waitForNavigation();
 
-    // 3. Scroll and click “Community Association Managers”
+    // 4. Scroll and click "Community Association Managers"
     let managerLink = null;
     for (let i = 0; i < 3; i++) {
       managerLink = await page.evaluateHandle(() => {
         const links = Array.from(document.querySelectorAll('a'));
-        return links.find(a => a.textContent.trim() === 'Community Association Managers');
+        return links.find(a =>
+          a.textContent.trim() === 'Community Association Managers'
+        );
       });
+
       if (managerLink) {
         await managerLink.click();
         try {
           await page.waitForNavigation({ timeout: 5000 });
-          break;
         } catch {}
+        break;
       }
     }
 
-    // 4. Click to expand "Licensee Files"
+    // 5. Expand "Licensee Files"
     await page.evaluate(() => {
       const toggle = document.querySelector('.collapse-toggle');
       if (toggle) toggle.click();
@@ -48,31 +58,34 @@ const browser = await puppeteer.launch({
 
     await page.waitForTimeout(1000);
 
-    // 5. Click the “Community Association Managers File” CSV link
+    // 6. Find and click CSV download link
     const csvUrl = await page.evaluate(() => {
       const link = Array.from(document.querySelectorAll('a')).find(a =>
-        a.textContent.includes('Community Association Managers File') && a.href.endsWith('.csv')
+        a.textContent.includes('Community Association Managers File') &&
+        a.href.endsWith('.csv')
       );
       return link ? link.href : null;
     });
 
     if (!csvUrl) throw new Error('CSV link not found.');
 
-    // 6. Download CSV
+    // 7. Download CSV
     const viewSource = await page.goto(csvUrl);
     const buffer = await viewSource.buffer();
 
     await browser.close();
+
     res.setHeader('Content-Disposition', 'attachment; filename="hoa_roster.csv"');
     res.setHeader('Content-Type', 'text/csv');
     return res.send(buffer);
 
   } catch (err) {
-    await browser.close();
+    if (browser) await browser.close();
     res.status(500).send({ error: err.toString() });
   }
 });
 
+// Health check
 app.get('/', (req, res) => {
   res.send('Puppeteer microservice is running');
 });
