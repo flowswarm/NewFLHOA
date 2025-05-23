@@ -1,6 +1,5 @@
 const express = require('express');
-const puppeteer = require('puppeteer-core'); // important: using puppeteer-core
-
+const puppeteer = require('puppeteer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -8,27 +7,28 @@ app.get('/scrape', async (req, res) => {
   const browser = await puppeteer.launch({
     headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox']
-    // Do NOT set executablePath manually — let Puppeteer-core find it
+    // Do not set executablePath manually – Puppeteer resolves it internally
   });
 
   const page = await browser.newPage();
 
   try {
-    // 1. Go to homepage
+    // Step 1: Go to homepage
     await page.goto('https://www2.myfloridalicense.com', {
       waitUntil: 'domcontentloaded',
     });
 
-    // 2. Click “Online Services”
+    // Step 2: Click "Online Services"
     await page.evaluate(() => {
       const link = Array.from(document.querySelectorAll('a')).find(a =>
         a.innerText.includes('ONLINE SERVICES')
       );
       if (link) link.click();
     });
+
     await page.waitForNavigation();
 
-    // 3. Find “Community Association Managers”
+    // Step 3: Click "Community Association Managers"
     let managerLink = null;
     for (let i = 0; i < 3; i++) {
       managerLink = await page.evaluateHandle(() => {
@@ -37,21 +37,20 @@ app.get('/scrape', async (req, res) => {
       });
       if (managerLink) {
         await managerLink.click();
-        try {
-          await page.waitForNavigation({ timeout: 5000 });
-        } catch {}
+        await page.waitForNavigation({ timeout: 5000 }).catch(() => {});
         break;
       }
     }
 
-    // 4. Expand “Licensee Files”
+    // Step 4: Expand "Licensee Files"
     await page.evaluate(() => {
       const toggle = document.querySelector('.collapse-toggle');
       if (toggle) toggle.click();
     });
+
     await page.waitForTimeout(1000);
 
-    // 5. Get CSV link
+    // Step 5: Click the CSV link
     const csvUrl = await page.evaluate(() => {
       const link = Array.from(document.querySelectorAll('a')).find(a =>
         a.textContent.includes('Community Association Managers File') && a.href.endsWith('.csv')
@@ -61,7 +60,7 @@ app.get('/scrape', async (req, res) => {
 
     if (!csvUrl) throw new Error('CSV link not found.');
 
-    // 6. Download CSV
+    // Step 6: Download CSV
     const viewSource = await page.goto(csvUrl);
     const buffer = await viewSource.buffer();
 
