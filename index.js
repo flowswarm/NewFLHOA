@@ -8,7 +8,7 @@ app.get('/scrape', async (req, res) => {
   const browser = await puppeteer.launch({
   headless: 'new',
   args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  executablePath: '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome'
+// no executablePath, let puppeteer resolve it
 });
 
   const page = await browser.newPage();
