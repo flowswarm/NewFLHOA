@@ -1,0 +1,13 @@
+{
+  "name": "florida-hoa-puppeteer",
+  "version": "1.0.0",
+  "description": "Automated Puppeteer scraper for Florida DBPR HOA data",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^22.15.0"
+  }
+}
