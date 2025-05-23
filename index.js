@@ -1,14 +1,10 @@
 const express = require('express');
-const puppeteer = require('puppeteer'); // keep this
-console.log('Puppeteer version:', puppeteer);
-const app = express();
-const PORT = process.env.PORT || 3000;
+const puppeteer = require('puppeteer');
 
-app.get('/scrape', async (req, res) => {
-  const browser = await puppeteer.launch({
+const browser = await puppeteer.launch({
   headless: 'new',
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-// no executablePath, let puppeteer resolve it
+  args: ['--no-sandbox', '--disable-setuid-sandbox']
+  // DO NOT include executablePath
 });
 
   const page = await browser.newPage();
