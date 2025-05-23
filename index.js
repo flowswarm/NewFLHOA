@@ -1,24 +1,20 @@
 const express = require('express');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer-core'); // important: using puppeteer-core
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/scrape', async (req, res) => {
-  let browser;
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    // Do NOT set executablePath manually — let Puppeteer-core find it
+  });
+
+  const page = await browser.newPage();
+
   try {
-    // Adjust this path to match your render-build.sh installed Chrome version
-    const chromePath = '/opt/render/.cache/puppeteer/chrome/linux-136.0.7103.94/chrome-linux64/chrome';
-
-    browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath: chromePath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-
-    const page = await browser.newPage();
-
-    // 1. Go to DBPR site
+    // 1. Go to homepage
     await page.goto('https://www2.myfloridalicense.com', {
       waitUntil: 'domcontentloaded',
     });
@@ -30,10 +26,9 @@ app.get('/scrape', async (req, res) => {
       );
       if (link) link.click();
     });
-
     await page.waitForNavigation();
 
-    // 3. Click “Community Association Managers”
+    // 3. Find “Community Association Managers”
     let managerLink = null;
     for (let i = 0; i < 3; i++) {
       managerLink = await page.evaluateHandle(() => {
@@ -44,8 +39,8 @@ app.get('/scrape', async (req, res) => {
         await managerLink.click();
         try {
           await page.waitForNavigation({ timeout: 5000 });
-          break;
         } catch {}
+        break;
       }
     }
 
@@ -54,10 +49,9 @@ app.get('/scrape', async (req, res) => {
       const toggle = document.querySelector('.collapse-toggle');
       if (toggle) toggle.click();
     });
-
     await page.waitForTimeout(1000);
 
-    // 5. Get CSV download link
+    // 5. Get CSV link
     const csvUrl = await page.evaluate(() => {
       const link = Array.from(document.querySelectorAll('a')).find(a =>
         a.textContent.includes('Community Association Managers File') && a.href.endsWith('.csv')
@@ -72,18 +66,17 @@ app.get('/scrape', async (req, res) => {
     const buffer = await viewSource.buffer();
 
     await browser.close();
-
     res.setHeader('Content-Disposition', 'attachment; filename="hoa_roster.csv"');
     res.setHeader('Content-Type', 'text/csv');
     return res.send(buffer);
 
   } catch (err) {
-    if (browser) await browser.close();
+    await browser.close();
     res.status(500).send({ error: err.toString() });
   }
 });
 
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
   res.send('Puppeteer microservice is running');
 });
 
