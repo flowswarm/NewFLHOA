@@ -1,3 +1,5 @@
 #!/bin/bash
-# Download Chromium manually
+
+echo "Installing Chrome for Puppeteer..."
+
 npx puppeteer browsers install chrome
