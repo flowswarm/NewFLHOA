@@ -6,9 +6,10 @@ const PORT = process.env.PORT || 3000;
 
 app.get('/scrape', async (req, res) => {
   const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  headless: 'new',
+  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  executablePath: '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome'
+});
 
   const page = await browser.newPage();
 
